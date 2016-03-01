@@ -92,7 +92,7 @@ NSString * const kGROAuthErrorFailingOperationKey = @"GROAuthErrorFailingOperati
 
 #pragma mark - Authentication
 
-- (void)authenticateUsingOAuthWithPath:(NSString *)path username:(NSString *)username password:(NSString *)password scope:(NSString *)scope success:(void (^)(AFOAuthCredential *))success failure:(void (^)(NSError *))failure {
+- (void)authenticateUsingOAuthWithPath:(NSString *)path username:(NSString *)username password:(NSString *)password scope:(NSString *)scope success:(GROAuth2SessionManagerAuthenticateSuccessBlock)success failure:(GROAuth2SessionManagerAuthenticateFailureBlock)failure {
     NSMutableDictionary *mutableParameters = [NSMutableDictionary dictionary];
     [mutableParameters setObject:kGROAuthPasswordCredentialsGrantType forKey:@"grant_type"];
     [mutableParameters setValue:username forKey:@"username"];
@@ -104,7 +104,7 @@ NSString * const kGROAuthErrorFailingOperationKey = @"GROAuthErrorFailingOperati
     [self authenticateUsingOAuthWithPath:path parameters:parameters success:success failure:failure];
 }
 
-- (void)authenticateUsingOAuthWithPath:(NSString *)path scope:(NSString *)scope success:(void (^)(AFOAuthCredential *))success failure:(void (^)(NSError *))failure {
+- (void)authenticateUsingOAuthWithPath:(NSString *)path scope:(NSString *)scope success:(GROAuth2SessionManagerAuthenticateSuccessBlock)success failure:(GROAuth2SessionManagerAuthenticateFailureBlock)failure {
     NSMutableDictionary *mutableParameters = [NSMutableDictionary dictionary];
     [mutableParameters setObject:kGROAuthClientCredentialsGrantType forKey:@"grant_type"];
     [mutableParameters setValue:scope forKey:@"scope"];
@@ -114,7 +114,7 @@ NSString * const kGROAuthErrorFailingOperationKey = @"GROAuthErrorFailingOperati
     [self authenticateUsingOAuthWithPath:path parameters:parameters success:success failure:failure];
 }
 
-- (void)authenticateUsingOAuthWithPath:(NSString *)path refreshToken:(NSString *)refreshToken success:(void (^)(AFOAuthCredential *))success failure:(void (^)(NSError *))failure {
+- (void)authenticateUsingOAuthWithPath:(NSString *)path refreshToken:(NSString *)refreshToken success:(GROAuth2SessionManagerAuthenticateSuccessBlock)success failure:(GROAuth2SessionManagerAuthenticateFailureBlock)failure {
     NSMutableDictionary *mutableParameters = [NSMutableDictionary dictionary];
     [mutableParameters setObject:kGROAuthRefreshGrantType forKey:@"grant_type"];
     [mutableParameters setValue:refreshToken forKey:@"refresh_token"];
@@ -124,7 +124,7 @@ NSString * const kGROAuthErrorFailingOperationKey = @"GROAuthErrorFailingOperati
     [self authenticateUsingOAuthWithPath:path parameters:parameters success:success failure:failure];
 }
 
-- (void)authenticateUsingOAuthWithPath:(NSString *)path code:(NSString *)code redirectURI:(NSString *)redirectURI success:(void (^)(AFOAuthCredential *))success failure:(void (^)(NSError *))failure {
+- (void)authenticateUsingOAuthWithPath:(NSString *)path code:(NSString *)code redirectURI:(NSString *)redirectURI success:(GROAuth2SessionManagerAuthenticateSuccessBlock)success failure:(GROAuth2SessionManagerAuthenticateFailureBlock)failure {
     NSMutableDictionary *mutableParameters = [NSMutableDictionary dictionary];
     [mutableParameters setObject:kGROAuthCodeGrantType forKey:@"grant_type"];
     [mutableParameters setValue:code forKey:@"code"];
@@ -135,7 +135,7 @@ NSString * const kGROAuthErrorFailingOperationKey = @"GROAuthErrorFailingOperati
     [self authenticateUsingOAuthWithPath:path parameters:parameters success:success failure:failure];
 }
 
-- (void)authenticateUsingOAuthWithPath:(NSString *)path parameters:(NSDictionary *)parameters success:(void (^)(AFOAuthCredential *))success failure:(void (^)(NSError *))failure {
+- (void)authenticateUsingOAuthWithPath:(NSString *)path parameters:(NSDictionary *)parameters success:(GROAuth2SessionManagerAuthenticateSuccessBlock)success failure:(GROAuth2SessionManagerAuthenticateFailureBlock)failure {
     NSMutableDictionary *mutableParameters = [NSMutableDictionary dictionaryWithDictionary:parameters];
     [mutableParameters setObject:[self clientID] forKey:@"client_id"];
     [mutableParameters setValue:[self secret] forKey:@"client_secret"];
@@ -152,7 +152,7 @@ NSString * const kGROAuthErrorFailingOperationKey = @"GROAuthErrorFailingOperati
     NSError *error;
     NSMutableURLRequest *mutableRequest = [[AFHTTPRequestSerializer serializer] requestWithMethod:@"POST" URLString:urlString parameters:parameters error:&error];
     if (error) {
-        failure(error);
+        failure(nil, nil, error);
 
         return;
     }
@@ -164,7 +164,7 @@ NSString * const kGROAuthErrorFailingOperationKey = @"GROAuthErrorFailingOperati
             if (failure) {
                 // TODO: Resolve the `error` field into a proper NSError object
                 // http://tools.ietf.org/html/rfc6749#section-5.2
-                failure(nil);
+                failure(operation, responseObject, nil);
             }
 
             return;
@@ -190,7 +190,7 @@ NSString * const kGROAuthErrorFailingOperationKey = @"GROAuthErrorFailingOperati
         [self setAuthorizationHeaderWithCredential:credential];
 
         if (success) {
-            success(credential);
+            success(operation, responseObject, credential);
         }
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
         if (failure) {
@@ -199,7 +199,8 @@ NSString * const kGROAuthErrorFailingOperationKey = @"GROAuthErrorFailingOperati
                 userInfo[kGROAuthErrorFailingOperationKey] = operation;
                 error = [NSError errorWithDomain:error.domain code:error.code userInfo:userInfo];
             }
-            failure(error);
+
+            failure(operation, operation.responseObject, error);
         }
     }];
 
